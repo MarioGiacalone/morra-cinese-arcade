@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Morra Cinese Arcade</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+    body {
+      font-family: 'Press Start 2P', monospace;
+      background-color: #001f3f;
+      color: #00cfff;
+      text-align: center;
+      padding: 10px 5px;
+      margin: 0;
+      user-select: none;
+    }
+    h1 {
+      text-shadow: 0 0 8px #00cfff, 0 0 20px #00cfff;
+      margin-bottom: 5px;
+      font-size: 1.4em;
+    }
+    #menu, #game, #scoreboard {
+      max-width: 480px;
+      margin: auto;
+      padding: 10px;
+      border: 3px solid #00cfff;
+      border-radius: 10px;
+      box-shadow: 0 0 15px #00cfff;
+      background: #002a5c;
+      display: none;
+    }
+    #menu { display: block; }
+
+    input#nickname {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.9em;
+      padding: 8px;
+      width: 80%;
+      max-width: 300px;
+      border: 2px solid #00cfff;
+      border-radius: 5px;
+      background: #001f3f;
+      color: #00cfff;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .button {
+      background: #00cfff;
+      color: #001f3f;
+      border: none;
+      padding: 10px 20px;
+      margin: 8px 5px;
+      font-size: 1em;
+      cursor: pointer;
+      border-radius: 6px;
+      box-shadow: 0 0 6px #00cfff;
+      transition: background 0.3s;
+      user-select: none;
+    }
+    .button:hover {
+      background: #0086b3;
+      color: #a0e8ff;
+    }
+    .choice-img {
+      width: 70px;
+      cursor: pointer;
+      margin: 10px 15px;
+      opacity: 1;
+      filter: drop-shadow(0 0 2px #00cfff);
+      transition: transform 0.2s ease;
+      user-select: none;
+    }
+    .choice-img:hover:not(.disabled) {
+      transform: scale(1.1);
+    }
+    .disabled {
+      opacity: 0.3;
+      pointer-events: none;
+      filter: none;
+      transform: none !important;
+    }
+
+    #result {
+      margin-top: 15px;
+      font-size: 1em;
+      min-height: 60px;
+      line-height: 1.3em;
+      color: #00eaff;
+      text-shadow: 0 0 8px #00cfff;
+      user-select: text;
+    }
+
+    #scoreBar {
+      width: 100%;
+      background-color: #003355;
+      margin: 15px auto 5px;
+      height: 25px;
+      border-radius: 12px;
+      box-shadow: inset 0 0 10px #00cfff;
+      overflow: hidden;
+    }
+    #scoreFill {
+      height: 25px;
+      background: #00cfff;
+      width: 0%;
+      border-radius: 12px 0 0 12px;
+      transition: width 0.3s ease;
+      box-shadow: 0 0 10px #00cfff;
+    }
+
+    #score {
+      font-size: 1.1em;
+      font-weight: bold;
+      margin-bottom: 15px;
+      color: #00ffff;
+      text-shadow: 0 0 6px #00cfff;
+      user-select: text;
+    }
+
+    /* Vita e powerup container */
+    #statusBar {
+      max-width: 480px;
+      margin: 15px auto;
+      display: flex;
+      justify-content: flex-end;
+      gap: 15px;
+      font-size: 0.85em;
+      color: #00e0ff;
+      user-select: none;
+    }
+    #lives {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .life {
+      width: 20px;
+      height: 20px;
+      background: #00cfff;
+      border-radius: 50%;
+      box-shadow: 0 0 6px #00cfff;
+      position: relative;
+    }
+    .life.empty {
+      background: #003355;
+      box-shadow: none;
+      border: 1px solid #00cfff;
+    }
+    /* Power-up icon style */
+    .powerup {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      border: 2px solid #00cfff;
+      border-radius: 6px;
+      padding: 4px 8px;
+      box-shadow: 0 0 10px #00cfff inset;
+      font-weight: 700;
+      user-select: none;
+      min-width: 70px;
+      justify-content: center;
+    }
+    .powerup.inactive {
+      opacity: 0.2;
+      border-color: #00557a;
+      box-shadow: none;
+    }
+
+    #ranking {
+      list-style-type: none;
+      padding: 0;
+      margin: 10px 0 20px;
+      font-size: 0.85em;
+      max-height: 250px;
+      overflow-y: auto;
+      color: #00d4ff;
+      text-shadow: 0 0 4px #0099cc;
+    }
+    #ranking li {
+      margin: 5px 0;
+      border-bottom: 1px solid #004466;
+      padding-bottom: 3px;
+    }
+
+    /* Responsive */
+    @media (max-width: 500px) {
+      #statusBar {
+        justify-content: space-between;
+      }
+      #lives {
+        gap: 4px;
+      }
+      .choice-img {
+        width: 60px;
+        margin: 8px 10px;
+      }
+      input#nickname {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>MORRA CINESE ARCADE</h1>
+
+  <div id="menu">
+    <p>Inserisci il tuo nickname:</p>
+    <input type="text" id="nickname" placeholder="Nickname" maxlength="15" />
+    <br />
+    <button class="button" onclick="startGame()">INIZIA A GIOCARE</button>
+    <button class="button" onclick="showScoreboard()">CLASSIFICA</button>
+  </div>
+
+  <div id="statusBar" style="display:none;">
+    <div id="lives" title="Vite rimanenti">
+      <!-- vite generate via JS -->
+    </div>
+    <div id="powerups">
+      <div id="shieldPower" class="powerup inactive" title="Scudo attivo">🛡️ SCUDO</div>
+      <div id="predictPower" class="powerup inactive" title="Previsione usata">🔮 PREV.</div>
+    </div>
+  </div>
+
+  <div id="game">
+    <h2 id="playerName"></h2>
+    <div>
+      <img src="paper.png" id="btn1" class="choice-img" onclick="play(1)" alt="Carta" />
+      <img src="scissors.png" id="btn2" class="choice-img" onclick="play(2)" alt="Forbice" />
+      <img src="rock.png" id="btn3" class="choice-img" onclick="play(3)" alt="Sasso" />
+    </div>
+    <div id="result"></div>
+    <div id="scoreBar"><div id="scoreFill"></div></div>
+    <div>Punteggio: <span id="score">0</span></div>
+    <button class="button" onclick="predictMove()">USA PREVISIONE CPU</button>
+    <button class="button" onclick="endGame()">FINE PARTITA</button>
+  </div>
+
+  <div id="scoreboard">
+    <h2>CLASSIFICA</h2>
+    <ul id="ranking"></ul>
+    <button class="button" onclick="goToMenu()">TORNA AL MENU</button>
+  </div>
+
+  <audio id="soundWin" src="win.mp3"></audio>
+  <audio id="soundLose" src="lose.mp3"></audio>
+  <audio id="soundFever" src="fever.mp3"></audio>
+
+  <script>
+    let score = 0;
+    let player = "";
+    let shieldActive = false;
+    let usedPrediction = false;
+    let blockedMove = 0;
+    let lives = 3;
+
+    function startGame() {
+      const nick = document.getElementById("nickname").value.trim();
+      if (!nick) return alert("Inserisci un nickname valido!");
+      player = nick;
+      score = 0;
+      shieldActive = false;
+      usedPrediction = false;
+      blockedMove = 0;
+      lives = 3;
+
+      document.getElementById("playerName").innerText = "Giocatore: " + player;
+      document.getElementById("menu").style.display = "none";
+      document.getElementById("scoreboard").style.display = "none";
+      document.getElementById("game").style.display = "block";
+      document.getElementById("statusBar").style.display = "flex";
+      updateScore(score);
+      updateButtons();
+      updateLives();
+      updatePowerups();
+      clearResult();
+    }
+
+    function updateLives() {
+      const container = document.getElementById("lives");
+      container.innerHTML = "";
+      for (let i = 0; i < 3; i++) {
+        const lifeDiv = document.createElement("div");
+        lifeDiv.classList.add("life");
+        if (i >= lives) lifeDiv.classList.add("empty");
+        container.appendChild(lifeDiv);
+      }
+    }
+
+    function updatePowerups() {
+      document.getElementById("shieldPower").classList.toggle("inactive", !shieldActive);
+      document.getElementById("predictPower").classList.toggle("inactive", !usedPrediction);
+    }
+
+    function updateButtons() {
+      for (let i = 1; i <= 3; i++) {
+        const btn = document.getElementById("btn" + i);
+        btn.classList.remove("disabled");
+        if (i === blockedMove) {
+          btn.classList.add("disabled");
+        }
+      }
+    }
+
+    function clearResult() {
+      document.getElementById("result").innerHTML = "";
+    }
+
+    function play(playerChoice) {
+      if (playerChoice === blockedMove) {
+        alert("Questa mossa è bloccata!");
+        return;
+      }
+
+      const cpu = Math.floor(Math.random() * 3) + 1;
+      const names = ["", "Carta", "Forbice", "Sasso"];
+      const diff = (playerChoice - cpu + 3) % 3;
+      let result = "Pareggio!";
+
+      // Risultato partita
+      if (diff === 1) {
+        result = "Hai VINTO!";
+        score += 100;
+        document.getElementById("soundWin").currentTime = 0;
+        document.getElementById("soundWin").play();
+      } else if (diff === 2) {
+        if (shieldActive) {
+          result = "Hai perso... ma lo SCUDO ti ha salvato!";
+          shieldActive = false;
+          updatePowerups();
+        } else {
+          result = "Hai perso...";
+          lives--;
+          updateLives();
+          score = Math.max(0, score - 50);
+          document.getElementById("soundLose").currentTime = 0;
+          document.getElementById("soundLose").play();
+        }
+      }
+
+      // Febbre bonus (1 volta per round)
+      if (Math.random() < 0.1) {
+        result += "<br><strong>FEBBRE DELLA MORRA CINESE!! x2</strong>";
+        score *= 2;
+        const feverSound = document.getElementById("soundFever");
+        feverSound.pause();
+        feverSound.currentTime = 0;
+        feverSound.play();
+      }
+
+      // Attiva scudo casuale (se non attivo)
+      if (!shieldActive && Math.random() < 0.05) {
+        shieldActive = true;
+        result += "<br><strong>Hai ottenuto uno SCUDO!</strong>";
+        updatePowerups();
+      }
+
+      // Blocco mossa casuale
+      if (Math.random() < 0.05) {
+        blockedMove = Math.floor(Math.random() * 3) + 1;
+        result += `<br><strong>La mossa "${names[blockedMove]}" sarà bloccata!</strong>`;
+      } else {
+        blockedMove = 0;
+      }
+
+      updateButtons();
+      document.getElementById("result").innerHTML = `${result}<br>CPU ha scelto: ${names[cpu]}`;
+      updateScore(score);
+
+      if (lives <= 0) {
+        alert("Hai perso tutte le vite! La partita è terminata.");
+        endGame();
+      }
+    }
+
+    function updateScore(val) {
+      document.getElementById("score").innerText = val;
+      document.getElementById("scoreFill").style.width = Math.min(val / 10, 100) + "%";
+    }
+
+    function endGame() {
+      const scores = JSON.parse(localStorage.getItem("scoreboard") || "[]");
+      scores.push({ name: player, score });
+      scores.sort((a, b) => b.score - a.score);
+      localStorage.setItem("scoreboard", JSON.stringify(scores.slice(0, 10)));
+
+      document.getElementById("game").style.display = "none";
+      document.getElementById("statusBar").style.display = "none";
+      showScoreboard();
+    }
+
+    function showScoreboard() {
+      document.getElementById("menu").style.display = "none";
+      document.getElementById("game").style.display = "none";
+      document.getElementById("scoreboard").style.display = "block";
+      document.getElementById("statusBar").style.display = "none";
+
+      const scores = JSON.parse(localStorage.getItem("scoreboard") || "[]");
+      const list = document.getElementById("ranking");
+      list.innerHTML = "";
+      scores.forEach((s) => {
+        const li = document.createElement("li");
+        li.textContent = `${s.name}: ${s.score} punti`;
+        list.appendChild(li);
+      });
+    }
+
+    function goToMenu() {
+      document.getElementById("scoreboard").style.display = "none";
+      document.getElementById("menu").style.display = "block";
+    }
+
+    function predictMove() {
+      if (usedPrediction) {
+        alert("Hai già usato la previsione!");
+        return;
+      }
+      const names = ["", "Carta", "Forbice", "Sasso"];
+      const cpuPrediction = Math.floor(Math.random() * 3) + 1;
+      alert("Previsione CPU (può cambiare): " + names[cpuPrediction]);
+      usedPrediction = true;
+      updatePowerups();
+    }
+  </script>
+</body>
+</html>
