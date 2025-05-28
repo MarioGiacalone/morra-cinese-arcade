@@ -214,7 +214,7 @@
   </style>
 </head>
 <body>
-  <h1>MORRA CINESE ARCADE</h1>
+<h1>MORRA CINESE ARCADE</h1>
 
   <div id="menu">
     <p>Inserisci il tuo nickname:</p>
@@ -226,7 +226,6 @@
 
   <div id="statusBar" style="display:none;">
     <div id="lives" title="Vite rimanenti">
-      <!-- vite generate via JS -->
     </div>
     <div id="powerups">
       <div id="shieldPower" class="powerup inactive" title="Scudo attivo">🛡️ SCUDO</div>
@@ -260,179 +259,218 @@
 
   <script>
     let score = 0;
-    let player = "";
-    let shieldActive = false;
-    let usedPrediction = false;
-    let blockedMove = 0;
-    let lives = 3;
+let player = "";
+let shieldActive = false;
+let usedPrediction = false; // Indica se la previsione è attiva e non consumata
+let blockedMove = 0;
+let lives = 3;
+let cpuNextMove = 0;       // La mossa CPU fissata quando si attiva la previsione
 
-    function startGame() {
-      const nick = document.getElementById("nickname").value.trim();
-      if (!nick) return alert("Inserisci un nickname valido!");
-      player = nick;
-      score = 0;
+function startGame() {
+  const nick = document.getElementById("nickname").value.trim();
+  if (!nick) return alert("Inserisci un nickname valido!");
+  player = nick;
+  score = 0;
+  shieldActive = false;
+  usedPrediction = false;
+  blockedMove = 0;
+  lives = 3;
+  cpuNextMove = 0;
+
+  document.getElementById("playerName").innerText = "Giocatore: " + player;
+  document.getElementById("menu").style.display = "none";
+  document.getElementById("scoreboard").style.display = "none";
+  document.getElementById("game").style.display = "block";
+  document.getElementById("statusBar").style.display = "flex";
+  updateScore(score);
+  updateButtons();
+  updateLives();
+  updatePowerups();
+  clearResult();
+}
+
+function updateLives() {
+  const container = document.getElementById("lives");
+  container.innerHTML = "";
+  for (let i = 0; i < 3; i++) {
+    const lifeDiv = document.createElement("div");
+    lifeDiv.classList.add("life");
+    if (i >= lives) lifeDiv.classList.add("empty");
+    container.appendChild(lifeDiv);
+  }
+}
+
+// Qui aggiorno la visualizzazione potenziamenti, modifica per predictPower
+function updatePowerups() {
+  document.getElementById("shieldPower").classList.toggle("inactive", !shieldActive);
+  // PredictPower attivo SOLO se usedPrediction è true (previsione attiva)
+  // oppure se è disponibile (ogni 5 vittorie) - lo gestiamo con updatePredictionAvailability
+}
+
+function updateButtons() {
+  for (let i = 1; i <= 3; i++) {
+    const btn = document.getElementById("btn" + i);
+    btn.classList.remove("disabled");
+    if (i === blockedMove) {
+      btn.classList.add("disabled");
+    }
+  }
+}
+
+function clearResult() {
+  document.getElementById("result").innerHTML = "";
+}
+
+// Funzione che controlla se la previsione è disponibile (ogni 5 vittorie)
+function isPredictionAvailable() {
+  return Math.floor(score / 100) > 0 && (Math.floor(score / 100) % 5 === 0) && !usedPrediction && cpuNextMove === 0;
+}
+
+function updatePredictionAvailability() {
+  const predictBtn = document.getElementById("predictPower");
+  if (isPredictionAvailable()) {
+    predictBtn.classList.remove("inactive");
+  } else {
+    predictBtn.classList.add("inactive");
+  }
+}
+
+function play(playerChoice) {
+  if (playerChoice === blockedMove) {
+    alert("Questa mossa è bloccata!");
+    return;
+  }
+
+  let cpu;
+  const names = ["", "Carta", "Forbice", "Sasso"];
+
+  // Se c'è una previsione attiva, usa la mossa fissata e poi resetta la previsione
+  if (usedPrediction && cpuNextMove !== 0) {
+    cpu = cpuNextMove;
+    cpuNextMove = 0;
+    usedPrediction = false;
+  } else {
+    cpu = Math.floor(Math.random() * 3) + 1;
+  }
+
+  const diff = (playerChoice - cpu + 3) % 3;
+  let result = "Pareggio!";
+
+  if (diff === 1) {
+    result = "Hai VINTO!";
+    score += 100;
+    document.getElementById("soundWin").currentTime = 0;
+    document.getElementById("soundWin").play();
+  } else if (diff === 2) {
+    if (shieldActive) {
+      result = "Hai perso... ma lo SCUDO ti ha salvato!";
       shieldActive = false;
-      usedPrediction = false;
-      blockedMove = 0;
-      lives = 3;
-
-      document.getElementById("playerName").innerText = "Giocatore: " + player;
-      document.getElementById("menu").style.display = "none";
-      document.getElementById("scoreboard").style.display = "none";
-      document.getElementById("game").style.display = "block";
-      document.getElementById("statusBar").style.display = "flex";
-      updateScore(score);
-      updateButtons();
-      updateLives();
-      updatePowerups();
-      clearResult();
+    } else {
+      result = "Hai perso...";
+      lives--;
+      score = Math.max(0, score - 50);
+      document.getElementById("soundLose").currentTime = 0;
+      document.getElementById("soundLose").play();
     }
+    updateLives();
+  }
 
-    function updateLives() {
-      const container = document.getElementById("lives");
-      container.innerHTML = "";
-      for (let i = 0; i < 3; i++) {
-        const lifeDiv = document.createElement("div");
-        lifeDiv.classList.add("life");
-        if (i >= lives) lifeDiv.classList.add("empty");
-        container.appendChild(lifeDiv);
-      }
-    }
+  // Febbre bonus (1 volta per round)
+  if (Math.random() < 0.1) {
+    result += "<br><strong>FEBBRE DELLA MORRA CINESE!! x2</strong>";
+    score *= 2;
+    const feverSound = document.getElementById("soundFever");
+    feverSound.pause();
+    feverSound.currentTime = 0;
+    feverSound.play();
+  }
 
-    function updatePowerups() {
-      document.getElementById("shieldPower").classList.toggle("inactive", !shieldActive);
-      document.getElementById("predictPower").classList.toggle("inactive", !usedPrediction);
-    }
+  // Attiva scudo casuale (se non attivo)
+  if (!shieldActive && Math.random() < 0.05) {
+    shieldActive = true;
+    result += "<br><strong>Hai ottenuto uno SCUDO!</strong>";
+  }
 
-    function updateButtons() {
-      for (let i = 1; i <= 3; i++) {
-        const btn = document.getElementById("btn" + i);
-        btn.classList.remove("disabled");
-        if (i === blockedMove) {
-          btn.classList.add("disabled");
-        }
-      }
-    }
+  // Blocco mossa casuale
+  if (Math.random() < 0.05) {
+    blockedMove = Math.floor(Math.random() * 3) + 1;
+    result += `<br><strong>La mossa "${names[blockedMove]}" sarà bloccata!</strong>`;
+  } else {
+    blockedMove = 0;
+  }
 
-    function clearResult() {
-      document.getElementById("result").innerHTML = "";
-    }
+  updateButtons();
+  document.getElementById("result").innerHTML = `${result}<br>CPU ha scelto: ${names[cpu]}`;
+  updateScore(score);
+  updatePowerups();
+  updatePredictionAvailability();
 
-    function play(playerChoice) {
-      if (playerChoice === blockedMove) {
-        alert("Questa mossa è bloccata!");
-        return;
-      }
+  if (lives <= 0) {
+    alert("Hai perso tutte le vite! La partita è terminata.");
+    endGame();
+  }
+}
 
-      const cpu = Math.floor(Math.random() * 3) + 1;
-      const names = ["", "Carta", "Forbice", "Sasso"];
-      const diff = (playerChoice - cpu + 3) % 3;
-      let result = "Pareggio!";
+function updateScore(val) {
+  document.getElementById("score").innerText = val;
+  document.getElementById("scoreFill").style.width = Math.min(val / 10, 100) + "%";
+}
 
-      // Risultato partita
-      if (diff === 1) {
-        result = "Hai VINTO!";
-        score += 100;
-        document.getElementById("soundWin").currentTime = 0;
-        document.getElementById("soundWin").play();
-      } else if (diff === 2) {
-        if (shieldActive) {
-          result = "Hai perso... ma lo SCUDO ti ha salvato!";
-          shieldActive = false;
-          updatePowerups();
-        } else {
-          result = "Hai perso...";
-          lives--;
-          updateLives();
-          score = Math.max(0, score - 50);
-          document.getElementById("soundLose").currentTime = 0;
-          document.getElementById("soundLose").play();
-        }
-      }
+function endGame() {
+  const scores = JSON.parse(localStorage.getItem("scoreboard") || "[]");
+  scores.push({ name: player, score });
+  scores.sort((a, b) => b.score - a.score);
+  localStorage.setItem("scoreboard", JSON.stringify(scores.slice(0, 10)));
 
-      // Febbre bonus (1 volta per round)
-      if (Math.random() < 0.1) {
-        result += "<br><strong>FEBBRE DELLA MORRA CINESE!! x2</strong>";
-        score *= 2;
-        const feverSound = document.getElementById("soundFever");
-        feverSound.pause();
-        feverSound.currentTime = 0;
-        feverSound.play();
-      }
+  document.getElementById("game").style.display = "none";
+  document.getElementById("statusBar").style.display = "none";
+  showScoreboard();
+}
 
-      // Attiva scudo casuale (se non attivo)
-      if (!shieldActive && Math.random() < 0.05) {
-        shieldActive = true;
-        result += "<br><strong>Hai ottenuto uno SCUDO!</strong>";
-        updatePowerups();
-      }
+function showScoreboard() {
+  document.getElementById("menu").style.display = "none";
+  document.getElementById("game").style.display = "none";
+  document.getElementById("scoreboard").style.display = "block";
+  document.getElementById("statusBar").style.display = "none";
 
-      // Blocco mossa casuale
-      if (Math.random() < 0.05) {
-        blockedMove = Math.floor(Math.random() * 3) + 1;
-        result += `<br><strong>La mossa "${names[blockedMove]}" sarà bloccata!</strong>`;
-      } else {
-        blockedMove = 0;
-      }
+  const scores = JSON.parse(localStorage.getItem("scoreboard") || "[]");
+  const list = document.getElementById("ranking");
+  list.innerHTML = "";
+  scores.forEach((s) => {
+    const li = document.createElement("li");
+    li.textContent = `${s.name}: ${s.score} punti`;
+    list.appendChild(li);
+  });
+}
 
-      updateButtons();
-      document.getElementById("result").innerHTML = `${result}<br>CPU ha scelto: ${names[cpu]}`;
-      updateScore(score);
+function goToMenu() {
+  document.getElementById("scoreboard").style.display = "none";
+  document.getElementById("menu").style.display = "block";
+}
 
-      if (lives <= 0) {
-        alert("Hai perso tutte le vite! La partita è terminata.");
-        endGame();
-      }
-    }
+function predictMove() {
+  if (!isPredictionAvailable()) {
+    alert("La previsione può essere usata solo ogni 5 vittorie!");
+    return;
+  }
+  if (usedPrediction) {
+    alert("Hai già usato la previsione!");
+    return;
+  }
 
-    function updateScore(val) {
-      document.getElementById("score").innerText = val;
-      document.getElementById("scoreFill").style.width = Math.min(val / 10, 100) + "%";
-    }
+  // Fissa la mossa CPU e attiva la previsione
+  cpuNextMove = Math.floor(Math.random() * 3) + 1;
+  usedPrediction = true;
 
-    function endGame() {
-      const scores = JSON.parse(localStorage.getItem("scoreboard") || "[]");
-      scores.push({ name: player, score });
-      scores.sort((a, b) => b.score - a.score);
-      localStorage.setItem("scoreboard", JSON.stringify(scores.slice(0, 10)));
+  // Mostra la mossa CPU specchiata
+  const names = ["", "Carta", "Forbice", "Sasso"];
+  document.getElementById("result").innerHTML =
+    `Previsione CPU: <img src="${names[cpuNextMove].toLowerCase()}.png" alt="${names[cpuNextMove]}" style="transform: scaleX(-1); width: 70px;">`;
 
-      document.getElementById("game").style.display = "none";
-      document.getElementById("statusBar").style.display = "none";
-      showScoreboard();
-    }
+  updatePowerups();
+  updatePredictionAvailability();
+} 
 
-    function showScoreboard() {
-      document.getElementById("menu").style.display = "none";
-      document.getElementById("game").style.display = "none";
-      document.getElementById("scoreboard").style.display = "block";
-      document.getElementById("statusBar").style.display = "none";
-
-      const scores = JSON.parse(localStorage.getItem("scoreboard") || "[]");
-      const list = document.getElementById("ranking");
-      list.innerHTML = "";
-      scores.forEach((s) => {
-        const li = document.createElement("li");
-        li.textContent = `${s.name}: ${s.score} punti`;
-        list.appendChild(li);
-      });
-    }
-
-    function goToMenu() {
-      document.getElementById("scoreboard").style.display = "none";
-      document.getElementById("menu").style.display = "block";
-    }
-
-    function predictMove() {
-      if (usedPrediction) {
-        alert("Hai già usato la previsione!");
-        return;
-      }
-      const names = ["", "Carta", "Forbice", "Sasso"];
-      const cpuPrediction = Math.floor(Math.random() * 3) + 1;
-      alert("Previsione CPU (può cambiare): " + names[cpuPrediction]);
-      usedPrediction = true;
-      updatePowerups();
-    }
   </script>
 </body>
-</html>
+</html>  
